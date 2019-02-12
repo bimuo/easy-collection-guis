@@ -45,7 +45,7 @@ public class GUISSendHeartPackage implements IMessageHandle<GUISMessage, Object>
 				CommonSendToCustomer.commonSendMessageToCustomer(ctx, t, (byte) 0, 1); // 上位机回复信息
 			}
 			// 如果发送信息的类没有初始化，就初始化一下
-			if(this.topicSender.isInit()==false) {
+			if (this.topicSender.isInit(hostNumber) == false) {
 				this.topicSender.init(hostNumber);
 			}
 		} catch (Exception e) {

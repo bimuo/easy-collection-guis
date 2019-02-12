@@ -8,6 +8,9 @@ import java.util.Optional;
 
 import javax.annotation.PreDestroy;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.aliyun.alink.apiclient.CommonRequest;
 import com.aliyun.alink.apiclient.CommonResponse;
 import com.aliyun.alink.apiclient.IoTCallback;
@@ -28,6 +31,7 @@ import com.aliyun.alink.linksdk.tmp.listener.IPublishResourceListener;
 import com.aliyun.alink.linksdk.tools.AError;
 import com.aliyun.alink.linksdk.tools.ALog;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 
@@ -37,11 +41,18 @@ import cn.stronglink.collection.guis.iot.moudle.DeviceRepository;
 import cn.stronglink.collection.guis.iot.vo.TagVo;
 
 public class AliTopicSender {
+	private final static Logger logger = LogManager.getLogger(AliTopicSender.class);
 	private final static String TAG = "AliTopicSender";
+	private final static Map<String, Boolean> initStateMap = Maps.newConcurrentMap();
+
 	/**
 	 * 产品key
 	 */
 	private final static String PRODUCT_KEY = "a1ygc8aR7Yq";
+	/**
+	 * 产品密钥
+	 */
+	private final static String PRODUCT_SECRET = "W0Sq0RsI9gPGBLD5";
 	/**
 	 * 设备信息
 	 */
@@ -49,14 +60,16 @@ public class AliTopicSender {
 
 	private DeviceRepository deviceRepository = (DeviceRepository) ContextUtils.getBean(DeviceRepository.class);
 
-	private boolean isInit = false;
-
-	public boolean isInit() {
-		return isInit;
+	public boolean isInit(String deviceCode) {
+		if (deviceCode != null && !deviceCode.isEmpty() && initStateMap.containsKey(deviceCode)) {
+			return initStateMap.get(deviceCode);
+		} else {
+			return false;
+		}
 	}
 
-	public void setInit(boolean isInit) {
-		this.isInit = isInit;
+	public void setInit(String deviceCode, boolean isInit) {
+		initStateMap.put(deviceCode, isInit);
 	}
 
 	/**
@@ -65,25 +78,27 @@ public class AliTopicSender {
 	 * @param deviceCode
 	 */
 	public void init(String deviceCode) {
-		this.setInit(false);
 		Preconditions.checkNotNull(deviceCode, "设备编号为空。");
 
-		deviceInfo.productKey = PRODUCT_KEY;
-		deviceInfo.deviceName = deviceCode;
-		deviceInfo.deviceSecret = null;
+		this.deviceInfo.productKey = PRODUCT_KEY;
+		this.deviceInfo.productSecret = PRODUCT_SECRET;
+		this.deviceInfo.deviceName = deviceCode;
+		this.deviceInfo.deviceSecret = "";
 
-		Optional<Device> device = deviceRepository.findById(deviceCode);
+		this.setInit(deviceCode, false);
+
+		Optional<Device> device = this.deviceRepository.findById(deviceCode);
 		if (device.isPresent()) {
-			deviceInfo.deviceSecret = device.get().getDeviceSecret();
-			this.sdkInit(deviceInfo);
+			this.deviceInfo.deviceSecret = device.get().getDeviceSecret();
+			this.sdkInit(this.deviceInfo);
 		} else {
-			this.register(deviceInfo);
+			this.register(this.deviceInfo);
 		}
 	}
 
 	@PreDestroy
 	public void destory() {
-		this.sdkDestory();
+		this.sdkDestory(this.deviceInfo.deviceName);
 	}
 
 	private void register(DeviceInfo deviceInfo) {
@@ -93,10 +108,15 @@ public class AliTopicSender {
 		 */
 		LinkKitInitParams params = new LinkKitInitParams();
 		IoTMqttClientConfig config = new IoTMqttClientConfig();
+		config.productKey = deviceInfo.productKey;
+		config.deviceName = deviceInfo.deviceName;
+
 		params.mqttClientConfig = config;
 		params.deviceInfo = deviceInfo;
+
 		final CommonRequest request = new CommonRequest();
 		request.setPath("/auth/register/device");
+
 		LinkKit.getInstance().deviceRegister(params, request, new IoTCallback() {
 			public void onFailure(CommonRequest commonRequest, Exception e) {
 				ALog.e(TAG, "动态注册失败 " + e);
@@ -104,7 +124,7 @@ public class AliTopicSender {
 
 			public void onResponse(CommonRequest commonRequest, CommonResponse commonResponse) {
 				if (commonResponse == null || StringUtils.isEmptyString(commonResponse.getData())) {
-					ALog.e(TAG, "动态注册失败 response=null");
+					logger.info("动态注册失败 response=null");
 					return;
 				}
 				try {
@@ -113,7 +133,7 @@ public class AliTopicSender {
 							new TypeToken<ResponseModel<Map<String, String>>>() {
 							}.getType());
 					if (response != null && "200".equals(response.code)) {
-						ALog.d(TAG, "动态注册成功" + (commonResponse == null ? "" : commonResponse.getData()));
+						logger.info("动态注册成功" + (commonResponse == null ? "" : commonResponse.getData()));
 						/**
 						 * 获取 deviceSecret, 存储到本地，然后执行初始化建联 这个流程只能走一次，获取到 secret 之后，下次启动需要读取本地存储的三元组，
 						 * 直接执行初始化建联，不可以再走动态初始化
@@ -125,7 +145,7 @@ public class AliTopicSender {
 					}
 				} catch (Exception e) {
 				}
-				ALog.d(TAG, "动态注册失败" + commonResponse.getData());
+				logger.info("动态注册失败" + commonResponse.getData());
 			}
 		});
 		// ####### 一型一密动态注册接口结束 ######
@@ -133,7 +153,7 @@ public class AliTopicSender {
 
 	@SuppressWarnings("rawtypes")
 	public void devPropertyPush(String deviceCode, List<TagVo> tags) {
-		Preconditions.checkArgument(this.isInit(),"设备未在阿里初始化，无法推送设备属性信息。");
+		Preconditions.checkArgument(this.isInit(deviceCode), "设备未在阿里初始化，无法推送设备属性信息。");
 		List<ValueWrapper> vwTags = new ArrayList<>();
 		for (TagVo tag : tags) {
 			Map<String, ValueWrapper> svwTag = new HashMap<>();
@@ -158,7 +178,7 @@ public class AliTopicSender {
 	}
 
 	public void send(String topic, String msg) {
-		Preconditions.checkArgument(this.isInit(),"设备未在阿里初始化，无法发送信息。");
+		Preconditions.checkArgument(this.isInit(this.deviceInfo.deviceName), "设备未在阿里初始化，无法发送信息。");
 		MqttPublishRequest request = new MqttPublishRequest();
 
 		// topic 用户根据实际场景填写
@@ -195,6 +215,8 @@ public class AliTopicSender {
 	 * @param deviceInfo
 	 */
 	private void save(DeviceInfo deviceInfo) {
+		this.deviceInfo.deviceSecret = deviceInfo.deviceSecret;
+
 		Device device = new Device();
 		device.setProductKey(deviceInfo.productKey);
 		device.setDeviceName(deviceInfo.deviceName);
@@ -209,9 +231,10 @@ public class AliTopicSender {
 		 * 设置 Mqtt 初始化参数
 		 */
 		IoTMqttClientConfig config = new IoTMqttClientConfig();
-		/**
-		 * 是否接受离线消息 对应 mqtt 的 cleanSession 字段
-		 */
+		config.productKey = deviceInfo.productKey;
+		config.deviceName = deviceInfo.deviceName;
+		config.deviceSecret = deviceInfo.deviceSecret;
+
 		params.mqttClientConfig = config;
 		/**
 		 * 设置初始化三元组信息，用户传入
@@ -223,7 +246,7 @@ public class AliTopicSender {
 		 */
 		Map<String, ValueWrapper> propertyValues = new HashMap<String, ValueWrapper>();
 		// propertyValues.put("LightSwitch", new ValueWrapper.BooleanValueWrapper(0));
-		propertyValues.put("deviceCode", new ValueWrapper.StringValueWrapper("12345"));
+		propertyValues.put("deviceCode", new ValueWrapper.StringValueWrapper(deviceInfo.deviceName));
 		propertyValues.put("tags", new ValueWrapper.ArrayValueWrapper(null));
 		params.propertyValues = propertyValues;
 		LinkKit.getInstance().init(params, new ILinkKitConnectListener() {
@@ -231,20 +254,20 @@ public class AliTopicSender {
 			@Override
 			public void onError(AError aError) {
 				ALog.e(TAG, "Init Error error=" + aError);
-				AliTopicSender.this.setInit(false);
+				AliTopicSender.this.setInit(deviceInfo.deviceName, false);
 			}
 
 			public void onInitDone(InitResult initResult) {
 				ALog.i(TAG, "onInitDone result=" + initResult);
-				AliTopicSender.this.setInit(true);
+				AliTopicSender.this.setInit(deviceInfo.deviceName, true);
 			}
 		});
 	}
 
-	private void sdkDestory() {
+	private void sdkDestory(String deviceCode) {
 		// 取消注册 notifyListener，notifyListener对象需和注册的时候是同一个对象
 //		LinkKit.getInstance().unRegisterOnNotifyListener(notifyListener);
 		LinkKit.getInstance().deinit();
-		this.setInit(false);
+		this.setInit(deviceCode, false);
 	}
 }

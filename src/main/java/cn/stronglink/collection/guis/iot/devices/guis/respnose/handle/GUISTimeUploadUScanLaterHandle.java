@@ -10,10 +10,8 @@ import com.alibaba.fastjson.JSON;
 
 import cn.stronglink.collection.guis.core.message.IMessageHandle;
 import cn.stronglink.collection.guis.core.util.ByteUtil;
-import cn.stronglink.collection.guis.core.util.ContextUtils;
 import cn.stronglink.collection.guis.iot.devices.guis.message.GUISMessage;
 import cn.stronglink.collection.guis.iot.devices.guis.respnose.common.CommonSendToCustomer;
-import cn.stronglink.collection.guis.iot.moudle.UHistoryRepository;
 import cn.stronglink.collection.guis.iot.mq.producer.AliTopicSender;
 import cn.stronglink.collection.guis.iot.vo.TagVo;
 import io.netty.channel.ChannelHandlerContext;
@@ -26,7 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
  */
 public class GUISTimeUploadUScanLaterHandle implements IMessageHandle<GUISMessage, Object> {
 	private static Logger logger = LogManager.getLogger(GUISTimeUploadUScanLaterHandle.class.getName());
-	private AliTopicSender topicSender = (AliTopicSender) ContextUtils.getBean("topicSender");
+	private AliTopicSender topicSender;
 	private static byte ACTION_CODE = Integer.valueOf("80", 16).byteValue();
 	private static final String TAG_NULL = "00000000";
 	protected final static String EXCEPTION_TAG_ID = "FFFFFFFF"; // 异常标签ID
@@ -34,7 +32,8 @@ public class GUISTimeUploadUScanLaterHandle implements IMessageHandle<GUISMessag
 	// 最大标签数量
 	private final static int MAX_TAG_COUNT = 54;
 
-	public GUISTimeUploadUScanLaterHandle(UHistoryRepository uHistoryRepository) {
+	public GUISTimeUploadUScanLaterHandle(AliTopicSender topicSender) {
+		this.topicSender = topicSender;
 	}
 
 	@Override
@@ -65,8 +64,8 @@ public class GUISTimeUploadUScanLaterHandle implements IMessageHandle<GUISMessag
 					String uPosition = String.valueOf(t.getData()[iCurIdx]); // U位
 					String labCode = ByteUtil.byteArrToHexString(t.getData(), (iCurIdx + 1), 4).toUpperCase(); // 标签编号
 					iCurIdx += 5;
-					if(EXCEPTION_TAG_ID.equals(labCode)) { // 如果标签有FFFFFFFF的，认为扫描杆程序异常，将不处理，并且不返回信息。
-						logger.info("有标签编号为[{}],因此本次标签数据不处理，源数据:{}",EXCEPTION_TAG_ID,JSON.toJSONString(t));
+					if (EXCEPTION_TAG_ID.equals(labCode)) { // 如果标签有FFFFFFFF的，认为扫描杆程序异常，将不处理，并且不返回信息。
+						logger.info("有标签编号为[{}],因此本次标签数据不处理，源数据:{}", EXCEPTION_TAG_ID, JSON.toJSONString(t));
 						return null;
 					} else if (!TAG_NULL.equals(labCode)) {
 						TagVo tag = new TagVo();
@@ -79,7 +78,7 @@ public class GUISTimeUploadUScanLaterHandle implements IMessageHandle<GUISMessag
 				// 保存盘点的数据到数据库
 				String deviceCode = ByteUtil.byteArrToHexString(t.getHostNumber()); // 主机编号
 				topicSender.devPropertyPush(deviceCode, tags);
-				logger.info("获取到定时扫描U位信息，并发送到阿里IOT平台  deviceCode:{}   tags={}",deviceCode, JSON.toJSONString(tags));
+				logger.info("获取到定时扫描U位信息，并发送到阿里IOT平台  deviceCode:{}   tags={}", deviceCode, JSON.toJSONString(tags));
 			} else {
 				logger.info("GUIS 12号指令返回的正文不是5的倍数！"); // 根据协议，此处应该给下位机返回接受失败的应答
 				CommonSendToCustomer.commonSendMessageToCustomer(ctx, t, (byte) 1, 1); // 上位机回复信息

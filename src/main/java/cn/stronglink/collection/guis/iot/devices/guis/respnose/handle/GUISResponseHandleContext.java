@@ -4,9 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import cn.stronglink.collection.guis.core.message.MessageHandleContext;
-import cn.stronglink.collection.guis.core.util.ContextUtils;
 import cn.stronglink.collection.guis.iot.devices.guis.message.GUISMessage;
-import cn.stronglink.collection.guis.iot.moudle.UHistoryRepository;
 import cn.stronglink.collection.guis.iot.mq.producer.AliTopicSender;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -17,16 +15,13 @@ import io.netty.util.concurrent.GlobalEventExecutor;
 public class GUISResponseHandleContext extends SimpleChannelInboundHandler<GUISMessage> {
 	private MessageHandleContext<GUISMessage, Object> messageHandleContent;
 	private static Logger logger = LogManager.getLogger(GUISResponseHandleContext.class.getName());
-	public static final ChannelGroup channels = new DefaultChannelGroup("GUISChannelGroup",
-			GlobalEventExecutor.INSTANCE);
-
-	private UHistoryRepository uHistoryRepository = (UHistoryRepository) ContextUtils.getBean(UHistoryRepository.class);
+	public static final ChannelGroup channels = new DefaultChannelGroup("GUISChannelGroup", GlobalEventExecutor.INSTANCE);
 	private AliTopicSender topicSender = new AliTopicSender();
 
 	public GUISResponseHandleContext() {
 		super();
 		this.messageHandleContent = new MessageHandleContext<>();
-		this.messageHandleContent.addHandleClass(new GUISTimeUploadUScanLaterHandle(uHistoryRepository)); // 处理下位机定时上传U位扫描后的信息的类
+		this.messageHandleContent.addHandleClass(new GUISTimeUploadUScanLaterHandle(topicSender)); // 处理下位机定时上传U位扫描后的信息的类
 //		this.messageHandleContent
 //				.addHandleClass(new GUISUScanChangeUploadULocationMegHandle(topicSender, uHistoryRepository)); // 处理下位机在U位信息有变化时主动上传U位扫描信息的类
 		this.messageHandleContent.addHandleClass(new GUISSendHeartPackage(topicSender)); // 下位机发送心跳包
