@@ -10,9 +10,9 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>cn.stronglink</groupId>
-	<artifactId>GUISCollectionService</artifactId>
+	<artifactId>easy-collection-guis</artifactId>
 	<version>0.0.5-SNAPSHOT</version>
-	<name>GUISCollectionService</name>
+	<name>easy-collection-guis</name>
 	<description>it</description>
 
 	<properties>
