@@ -155,26 +155,37 @@ public class AliTopicSender {
 	public void devPropertyPush(String deviceCode, List<TagVo> tags) {
 		Preconditions.checkArgument(this.isInit(deviceCode), "设备未在阿里初始化，无法推送设备属性信息。");
 		List<ValueWrapper> vwTags = new ArrayList<>();
-		for (TagVo tag : tags) {
-			Map<String, ValueWrapper> svwTag = new HashMap<>();
-			svwTag.put("tag", new ValueWrapper.StringValueWrapper(tag.getTag()));
-			svwTag.put("u", new ValueWrapper.IntValueWrapper(tag.getU()));
-			vwTags.add(new ValueWrapper.StructValueWrapper(svwTag));
+		for (int i = 1; i < 44; i++) {
+			for (TagVo tag : tags) {
+				if (tag.getU() == i) {
+					vwTags.add(new ValueWrapper.StringValueWrapper(tag.getTag()));
+				} else {
+					vwTags.add(new ValueWrapper.StringValueWrapper());
+				}
+			}
 		}
 		// 设备上报
 		Map<String, ValueWrapper> reportData = new HashMap<>();
 		// identifier 是云端定义的属性的唯一标识，valueWrapper是属性的值
-		reportData.put("deviceCode", new ValueWrapper.StringValueWrapper("12345"));
+		reportData.put("deviceCode", new ValueWrapper.StringValueWrapper(deviceCode));
 		reportData.put("tags", new ValueWrapper.ArrayValueWrapper(vwTags));
+
 		LinkKit.getInstance().getDeviceThing().thingPropertyPost(reportData, new IPublishResourceListener() {
 			public void onSuccess(String s, Object o) {
 				// 属性上报成功
+				logger.info("属性上报成功 msg={}", s);
 			}
 
 			public void onError(String s, AError aError) {
 				// 属性上报失败
+				logger.error("属性上报失败 msg={}", aError.getMsg());
 			}
 		});
+
+//		Map<String,Object> ret = new HashMap<>();
+//		ret.put("deviceCode", deviceCode);
+//		ret.put("tags", tags);
+//		send("",JSON.toJSONString(ret));
 	}
 
 	public void send(String topic, String msg) {
