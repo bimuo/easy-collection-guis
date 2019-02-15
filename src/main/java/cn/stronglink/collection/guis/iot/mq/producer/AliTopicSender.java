@@ -160,7 +160,7 @@ public class AliTopicSender {
 				if (tag.getU() == i) {
 					vwTags.add(new ValueWrapper.StringValueWrapper(tag.getTag()));
 				} else {
-					vwTags.add(new ValueWrapper.StringValueWrapper());
+					vwTags.add(new ValueWrapper.StringValueWrapper(""));
 				}
 			}
 		}
