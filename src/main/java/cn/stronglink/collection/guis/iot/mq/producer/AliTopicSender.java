@@ -1,6 +1,5 @@
 package cn.stronglink.collection.guis.iot.mq.producer;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +10,7 @@ import javax.annotation.PreDestroy;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.alibaba.fastjson.JSON;
 import com.aliyun.alink.apiclient.CommonRequest;
 import com.aliyun.alink.apiclient.CommonResponse;
 import com.aliyun.alink.apiclient.IoTCallback;
@@ -154,21 +154,21 @@ public class AliTopicSender {
 	@SuppressWarnings("rawtypes")
 	public void devPropertyPush(String deviceCode, List<TagVo> tags) {
 		Preconditions.checkArgument(this.isInit(deviceCode), "设备未在阿里初始化，无法推送设备属性信息。");
-		List<ValueWrapper> vwTags = new ArrayList<>();
-		for (int i = 1; i < 44; i++) {
-			for (TagVo tag : tags) {
-				if (tag.getU() == i) {
-					vwTags.add(new ValueWrapper.StringValueWrapper(tag.getTag()));
-				} else {
-					vwTags.add(new ValueWrapper.StringValueWrapper(""));
-				}
-			}
-		}
+//		List<ValueWrapper> vwTags = new ArrayList<>();
+//		for (int i = 1; i < 44; i++) {
+//			for (TagVo tag : tags) {
+//				if (tag.getU() == i) {
+//					vwTags.add(new ValueWrapper.StringValueWrapper(tag.getTag()));
+//				} else {
+//					vwTags.add(new ValueWrapper.StringValueWrapper(""));
+//				}
+//			}
+//		}
 		// 设备上报
 		Map<String, ValueWrapper> reportData = new HashMap<>();
 		// identifier 是云端定义的属性的唯一标识，valueWrapper是属性的值
 		reportData.put("deviceCode", new ValueWrapper.StringValueWrapper(deviceCode));
-		reportData.put("tags", new ValueWrapper.ArrayValueWrapper(vwTags));
+		reportData.put("tags", new ValueWrapper.StringValueWrapper(JSON.toJSONString(tags)));
 
 		LinkKit.getInstance().getDeviceThing().thingPropertyPost(reportData, new IPublishResourceListener() {
 			public void onSuccess(String s, Object o) {
