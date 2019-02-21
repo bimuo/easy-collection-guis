@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>cn.stronglink</groupId>
 	<artifactId>easy-collection-guis</artifactId>
-	<version>0.0.6-SNAPSHOT</version>
+	<version>0.0.7-SNAPSHOT</version>
 	<name>easy-collection-guis</name>
 	<description>it</description>
 
@@ -89,28 +89,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>dockerfile-maven-plugin</artifactId>
-				<version>1.2.0</version>
-				<configuration>
-					<imageName>bimuo/easy_collection_guis</imageName>
-					<imageTags>
-						<imageTag>${project.version}</imageTag>
-						<imageTag>latest</imageTag>
-					</imageTags>
-					<dockerDirectory>${project.basedir}/</dockerDirectory>
-					<resources>
-						<resource>
-							<targetPath>/</targetPath>
-							<directory>${project.build.directory}</directory>
-							<include>${project.build.finalName}.jar</include>
-						</resource>
-					</resources>
-					<serverId>docker-hub</serverId>
-                	<registryUrl>https://index.docker.io/v1/</registryUrl>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>
