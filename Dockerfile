@@ -4,6 +4,6 @@ MAINTAINER Yu Zhantao <yuzhantao@qq.com>
 VOLUME /tmp
 ARG JAR_FILE
 ADD ${JAR_FILE} /apps/app.jar
-# WORKDIR /apps/
+WORKDIR /apps/
 EXPOSE 16868
 # ENTRYPOINT ["java","-jar","./app.jar"]
