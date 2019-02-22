@@ -16,7 +16,7 @@ public class GuisCollectionServiceApplication {
 	}
 	
 	/**
-	 * 实例化GUIS采集
+	 * 实例化GUIS采集 
 	 * @return
 	 */
 	private static CollectionServer beanGuisServer() {
