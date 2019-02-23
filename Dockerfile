@@ -6,4 +6,5 @@ ARG JAR_FILE
 ADD ${JAR_FILE} /apps/app.jar
 WORKDIR /apps/
 EXPOSE 16868
+EXPOSE 8088
 # ENTRYPOINT ["java","-jar","./app.jar"]
